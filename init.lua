@@ -165,6 +165,10 @@ vim.keymap.set('i', 'jk', '<ESC>')
 -- Another one of my personal favourites
 vim.keymap.set('n', '<leader><CR>', ':w<CR>', { desc = '[W]rite to file' })
 
+-- Stay in ident mode
+vim.keymap.set('v', '>', '>gv', { noremap = true, silent = true })
+vim.keymap.set('v', '<', '<gv', { noremap = true, silent = true })
+
 -- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
 vim.keymap.set('n', '<ESC>', '<cmd>nohlsearch<CR>')
@@ -221,6 +225,15 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 end ---@diagnostic disable-next-line: undefined-field
 vim.opt.rtp:prepend(lazypath)
 
+-- Disable automatic comment into the next line
+-- See formatoptions in help
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = '*',
+  callback = function()
+    vim.opt_local.formatoptions:remove { 'r', 'o' }
+  end,
+})
+
 -- [[ Configure and install plugins ]]
 --
 --  To check the current status of your plugins, run
@@ -251,13 +264,13 @@ require('lazy').setup({
   { -- Adds git related signs to the gutter, as well as utilities for managing changes
     'lewis6991/gitsigns.nvim',
     opts = {
-      signs = {
-        add = { text = '+' },
-        change = { text = '~' },
-        delete = { text = '_' },
-        topdelete = { text = '‾' },
-        changedelete = { text = '~' },
-      },
+      -- signs = {
+      --   add = { text = '+' },
+      --   change = { text = '~' },
+      --   delete = { text = '_' },
+      --   topdelete = { text = '‾' },
+      --   changedelete = { text = '~' },
+      -- },
     },
   },
 
@@ -598,14 +611,14 @@ require('lazy').setup({
       })
 
       -- Change diagnostic symbols in the sign column (gutter)
-      -- if vim.g.have_nerd_font then
-      --   local signs = { ERROR = '', WARN = '', INFO = '', HINT = '' }
-      --   local diagnostic_signs = {}
-      --   for type, icon in pairs(signs) do
-      --     diagnostic_signs[vim.diagnostic.severity[type]] = icon
-      --   end
-      --   vim.diagnostic.config { signs = { text = diagnostic_signs } }
-      -- end
+      if vim.g.have_nerd_font then
+        local signs = { ERROR = '', WARN = '', INFO = '', HINT = '' }
+        local diagnostic_signs = {}
+        for type, icon in pairs(signs) do
+          diagnostic_signs[vim.diagnostic.severity[type]] = icon
+        end
+        vim.diagnostic.config { signs = { text = diagnostic_signs } }
+      end
 
       -- LSP servers and clients are able to communicate to each other what features they support.
       --  By default, Neovim doesn't support everything that is in the LSP specification.
@@ -624,9 +637,10 @@ require('lazy').setup({
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       local servers = {
-        -- clangd = {},
-        -- gopls = {},
-        -- pyright = {},
+        clangd = {},
+        basedpyright = {},
+        neocmake = {},
+        remark_ls = {},
         -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
@@ -852,13 +866,17 @@ require('lazy').setup({
     --
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
     -- 'folke/tokyonight.nvim',
-    'sainnhe/gruvbox-material',
+    -- 'sainnhe/gruvbox-material',
+    'ellisonleao/gruvbox.nvim',
     priority = 1000, -- Make sure to load this before all the other start plugins.
+    opts = {
+      transparent_mode = true,
+    },
     init = function()
       -- Load the colorscheme here.
       -- Like many other themes, this one has different styles, and you could load
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'gruvbox-material'
+      vim.cmd.colorscheme 'gruvbox'
 
       -- You can configure highlights by doing something like:
       vim.cmd.hi 'Comment gui=none'
@@ -963,11 +981,75 @@ require('lazy').setup({
       vim.keymap.set('n', '<Tab>', require('harpoon.ui').toggle_quick_menu, { desc = 'Show marked files' })
     end,
   },
+  -- Navigation bar that is actually useful
+  {
+    'SmiteshP/nvim-navic',
+    opts = {
+      icons = {
+        File = '󰈙 ',
+        Module = ' ',
+        Namespace = '󰌗 ',
+        Package = ' ',
+        Class = '󰌗 ',
+        Method = '󰆧 ',
+        Property = ' ',
+        Field = ' ',
+        Constructor = ' ',
+        Enum = '󰕘',
+        Interface = '󰕘',
+        Function = '󰊕 ',
+        Variable = '󰆧 ',
+        Constant = '󰏿 ',
+        String = '󰀬 ',
+        Number = '󰎠 ',
+        Boolean = '◩ ',
+        Array = '󰅪 ',
+        Object = '󰅩 ',
+        Key = '󰌋 ',
+        Null = '󰟢 ',
+        EnumMember = ' ',
+        Struct = '󰌗 ',
+        Event = ' ',
+        Operator = '󰆕 ',
+        TypeParameter = '󰊄 ',
+      },
+      lsp = {
+        auto_attach = true,
+        preference = nil,
+      },
+      highlight = true,
+      separator = ' > ',
+      depth_limit = 0,
+      depth_limit_indicator = '..',
+      safe_output = true,
+      lazy_update_context = false,
+      click = false,
+      format_text = function(text)
+        return text
+      end,
+    },
+  },
+  {
+    'nvim-lualine/lualine.nvim',
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    opts = {
+      winbar = {
+        lualine_c = {
+          'navic',
+          color_correction = nil,
+          navic_opts = nil,
+        },
+      },
+    },
+  },
   {
     'LunarVim/breadcrumbs.nvim',
     dependencies = {
-      { 'SmiteshP/nvim-navic' },
+      'SmiteshP/nvim-navic',
     },
+  },
+  {
+    'b0o/schemastore.nvim',
   },
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
