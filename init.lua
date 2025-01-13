@@ -1033,6 +1033,12 @@ require('lazy').setup({
     'nvim-lualine/lualine.nvim',
     dependencies = { 'nvim-tree/nvim-web-devicons' },
     opts = {
+      options = {
+        ignore_focus = {
+          'neo-tree',
+          'harpoon',
+        },
+      },
       winbar = {
         lualine_c = {
           'navic',
